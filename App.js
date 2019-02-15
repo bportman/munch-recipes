@@ -2,10 +2,10 @@ import React from 'react';
 import { StyleSheet, Text, View, TextInput, FlatList, Image, Button, Linking, Alert } from 'react-native';
 
 export default class App extends React.Component {
-  state = { 
+  state = {
     search: '',
     results: [],
-    groceries: [],
+    savedRecipes: [],
     showGroceryList: false
   };
 
@@ -14,126 +14,143 @@ export default class App extends React.Component {
   lookupRecipes() {
     var baseUrl = 'https://www.food2fork.com/api/'
     var endpoint = 'search'
-    var apiKey = 'a6777c00068f36f86fc5c379d021b86b'
+    var apiKey = 'f573a959a36eeefaed9f8562e4601dd0'
     var query = this.state.search
 
     fetch(baseUrl + endpoint + '?key=' + apiKey + '&q=' + query)
-        .then(res => res.json())
-        .then((myJson) => {
-          this.setState({
-            results: myJson.recipes
-          })
+      .then(res => res.json())
+      .then((myJson) => {
+        this.setState({
+          results: myJson.recipes
         })
-        .catch(err => console.log(err))
+        console.log(myJson.recipes)
+      })
+      .catch(err => console.log(err))
   }
 
   viewRecipe = (url) => {
     Linking.openURL(url)
   }
 
-  getIngredients = (rId) => {
-    var baseUrl = 'https://www.food2fork.com/api/'
-    var endpoint = 'get'
-    var apiKey = 'a6777c00068f36f86fc5c379d021b86b'
-
-    fetch(baseUrl + endpoint + '?key=' + apiKey + '&rId=' + rId)
-        .then(res => res.json())
-        .then((myJson) => {
-          this.setState({
-            groceries: [
-              ...this.state.groceries, ...myJson.recipe.ingredients
-            ]
-          })
-          // Works on both iOS and Android
-          Alert.alert(
-            'Grocery List Updated',
-            'The ingredients for this recipe have been added to your grocery list.',
-            [
-              {text: 'View Grocery List', onPress: this.viewGroceryList},
-              {text: 'Go Back', onPress: () => console.log('OK Pressed')},
-            ],
-            {cancelable: false},
-          );
-        })
-        .catch(err => console.log(err))
+  saveRecipe = (recipe) => {
+    this.setState({
+      savedRecipes: [
+        ...this.state.savedRecipes, recipe
+      ]
+    })
+    // Works on both iOS and Android
+    Alert.alert(
+      'Saved Recipes List Updated',
+      'The recipe has been added to your list.',
+      [
+        { text: 'View Saved Recipes', onPress: this.viewSavedRecipes },
+        { text: 'Go Back', onPress: () => console.log('OK Pressed') },
+      ],
+      { cancelable: false },
+    );
   }
 
-  viewGroceryList = () => this.setState({ showGroceryList: true })
+  removeRecipe = (rId) => {
+    let newSavedRecipes = this.state.savedRecipes.filter(recipe => recipe.recipe_id != rId)
+    this.setState({ savedRecipes: newSavedRecipes })
+  }
+
+  viewSavedRecipes = () => this.setState({ showGroceryList: true })
   viewMainScreen = () => this.setState({ showGroceryList: false })
 
-  _renderGroceryItem = ({item}) => {
+  _renderSavedRecipe = ({ item }) => {
     return (
-      <View style={styles.recipe}>
-        <Text>{item}</Text>
-        {/* <Button
-          onPress={() => this.removeGroceryItem(item)}
-          title="Delete Grocery Item"
+      <View id={item.id} style={styles.recipe}>
+        <Image
+          style={{ width: 250, height: 250 }}
+          source={{ uri: item.image_url }}
+        />
+        <Text>{item.title}</Text>
+        <Button
+          onPress={() => this.viewRecipe(item.source_url)}
+          title="View Recipe"
           color="#841584"
-        /> */}
+          style={styles.buttons}
+        />
+        <Button
+          onPress={() => this.removeRecipe(item.recipe_id)}
+          title="Remove Recipe"
+          color="#841584"
+          style={styles.buttons}
+        />
       </View>
-      )
-}
-  _renderItem = ({item}) => {
-      return (
-        <View style={styles.recipe}>
-          <Image
-            style={{width: 250, height: 250}}
-            source={{uri: item.image_url}}
-          />
-          <Text>{item.title}</Text>
-          <Button
-            onPress={() => this.viewRecipe(item.source_url)}
-            title="View Recipe"
-            color="#841584"
-          />
-          <Button
-            onPress={() => this.getIngredients(item.recipe_id)}
-            title="Add To Grocery List"
-            color="#841584"
-          />
-        </View>
-        )
+    )
+  }
+  _renderItem = ({ item }) => {
+    return (
+      <View id={item.id} style={styles.recipe}>
+        <Image
+          style={{ width: 250, height: 250 }}
+          source={{ uri: item.image_url }}
+        />
+        <Text>{item.title}</Text>
+        <Button
+          onPress={() => this.viewRecipe(item.source_url)}
+          title="View Recipe"
+          color="#841584"
+          style={styles.buttons}
+        />
+        <Button
+          onPress={() => this.saveRecipe(item)}
+          title="Save Recipe"
+          color="#841584"
+          style={styles.buttons}
+        />
+      </View>
+    )
   }
 
+  _keyExtractor = (item, index) => item.recipe_id;
+
   render() {
-    if(this.state.showGroceryList) {
+    if (this.state.showGroceryList) {
       // render our grocery list screen
       return (
         <View style={styles.container}>
-          <Text>Your Grocery List</Text>
-        <Button
-              onPress={this.viewMainScreen}
-              title="Back to Main Screen"
-              color="#841584"
-            />
-            {this.state.groceries.length == 0 ? <Text>Your grocery list is empty</Text> : null}
-        <FlatList
-          data={this.state.groceries}
-          renderItem={this._renderGroceryItem}
-        />
+          <Text>Your Saved Recipes</Text>
+          <Button
+            onPress={this.viewMainScreen}
+            title="Back to Main Screen"
+            color="#841584"
+          />
+          {this.state.savedRecipes.length == 0 ? <Text>You haven't saved any recipes yet.</Text> : null}
+          <FlatList
+            data={this.state.savedRecipes}
+            renderItem={this._renderSavedRecipe}
+            keyExtractor={this._keyExtractor}
+          />
         </View>
       );
     } else {
       // render our main screen
       return (
         <View style={styles.container}>
+          <Image
+            source={require('./assets/logo.png')}
+          />
           <Text>Welcome to Munch Recipes</Text>
           <TextInput
-          style={styles.search}
-          onChangeText={(search) => this.setState({search})}
-          onEndEditing={() => this.lookupRecipes()}
-          value={this.state.search}
-          placeholder="Try 'Avocado' or 'Chicken,Quinoa'..."
-        />
-        <Button
-              onPress={this.viewGroceryList}
-              title="View Grocery List"
-              color="#841584"
-            />
-        <FlatList
-          data={this.state.results}
-          renderItem={this._renderItem}
-        />
+            style={styles.search}
+            onChangeText={(search) => this.setState({ search })}
+            onEndEditing={() => this.lookupRecipes()}
+            value={this.state.search}
+            placeholder="Try 'Avocado' or 'Chicken,Quinoa'..."
+          />
+          <Button
+            onPress={this.viewSavedRecipes}
+            title="View Saved Recipes"
+            color="#841584"
+          />
+          <FlatList
+            data={this.state.results}
+            renderItem={this._renderItem}
+            keyExtractor={this._keyExtractor}
+          />
         </View>
       );
     }
@@ -149,8 +166,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   search: {
-    height: 40, 
-    borderColor: 'gray', 
+    height: 40,
+    borderColor: 'gray',
     borderWidth: 3,
     width: '90%'
   },
@@ -160,5 +177,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  buttons: {
+    marginTop: 5
   }
 });
